@@ -7,8 +7,8 @@ st.title("📈 Plano Cartesiano Interativo")
 
 st.markdown(
     """
-    Adicione coordenadas (x, y) para traçar segmentos de reta em tempo real.
-    Use os controles à esquerda para adicionar ou limpar pontos.
+    Adicione coordenadas (x, y) para traçar segmentos de reta em tempo real.  
+    Ou clique no botão abaixo para desenhar o **Steve do Minecraft** automaticamente!
     """
 )
 
@@ -16,20 +16,35 @@ st.markdown(
 if "pontos" not in st.session_state:
     st.session_state.pontos = []
 
+# ---- Função: desenho do Steve ----
+def gerar_steve():
+    return [
+        (-1, 8), (1, 8), (1, 10), (-1, 10), (-1, 8),
+        (-1, 8), (-2, 4), (2, 4), (1, 8),
+        (-2, 4), (-3, 4), (-3, 0), (-2, 0), (-2, 4),
+        (2, 4), (3, 4), (3, 0), (2, 0), (2, 4),
+        (-2, 0), (-1, 0), (-1, -4), (0, -4), (0, 0),
+        (1, 0), (1, -4), (2, -4), (2, 0)
+    ]
+
 # ---- Barra lateral ----
 st.sidebar.header("Adicionar coordenadas")
 x = st.sidebar.number_input("X", step=0.5)
 y = st.sidebar.number_input("Y", step=0.5)
 
 col1, col2 = st.sidebar.columns(2)
-if col1.button("➕ Adicionar"):
+if col1.button("➕ Adicionar ponto"):
     st.session_state.pontos.append((x, y))
 if col2.button("🗑️ Limpar tudo"):
     st.session_state.pontos = []
 
+# ---- Botão para desenhar o Steve ----
+if st.button("🧍‍♂️ Desenhar o Steve do Minecraft"):
+    st.session_state.pontos = gerar_steve()
+
 # ---- Exibir lista ----
 if st.session_state.pontos:
-    st.sidebar.markdown("### Pontos adicionados:")
+    st.sidebar.markdown("### Pontos atuais:")
     for i, (px, py) in enumerate(st.session_state.pontos, start=1):
         st.sidebar.write(f"{i}. ({px}, {py})")
 
