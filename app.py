@@ -7,7 +7,7 @@ st.title("📐 Plano Cartesiano Interativo")
 
 st.markdown("""
 Adicione pontos e desenhe segmentos de reta livremente no **plano cartesiano**.  
-Agora com aparência de um plano de verdade (eixos cruzando no 0,0).
+Todos os controles estão na barra lateral 👉
 """)
 
 # ----- Estado inicial -----
@@ -16,7 +16,7 @@ if "formas" not in st.session_state:
 if "forma_atual" not in st.session_state:
     st.session_state.forma_atual = []  # Pontos do desenho atual
 
-# ----- Funções -----
+# ----- Funções auxiliares -----
 def cor_aleatoria():
     cores = [
         "#FF6B6B", "#6BCB77", "#4D96FF", "#FFD93D",
@@ -36,36 +36,38 @@ def gerar_steve():
     ]
 
 # ----- Interface lateral -----
-st.sidebar.header("Adicionar Coordenadas")
-x = st.sidebar.number_input("X", step=0.5)
-y = st.sidebar.number_input("Y", step=0.5)
+st.sidebar.header("🧭 Controles do Desenho")
+
+x = st.sidebar.number_input("Coordenada X", step=0.5)
+y = st.sidebar.number_input("Coordenada Y", step=0.5)
 
 col1, col2 = st.sidebar.columns(2)
 if col1.button("➕ Adicionar ponto"):
     st.session_state.forma_atual.append((x, y))
-
 if col2.button("🗑️ Limpar tudo"):
     st.session_state.formas = []
     st.session_state.forma_atual = []
 
-if st.button("✅ Finalizar forma"):
+st.sidebar.markdown("---")
+if st.sidebar.button("✅ Finalizar forma"):
     if st.session_state.forma_atual:
         cor = cor_aleatoria()
         st.session_state.formas.append({"pontos": st.session_state.forma_atual, "cor": cor})
         st.session_state.forma_atual = []
 
-if st.button("🧍‍♂️ Desenhar Steve do Minecraft"):
+if st.sidebar.button("🧍‍♂️ Desenhar Steve do Minecraft"):
     cor = cor_aleatoria()
     st.session_state.formas.append({"pontos": gerar_steve(), "cor": cor})
 
-st.sidebar.markdown("### Pontos atuais:")
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📋 Pontos atuais:")
 for i, (px, py) in enumerate(st.session_state.forma_atual, 1):
     st.sidebar.write(f"{i}. ({px}, {py})")
 
-st.sidebar.markdown("### Formas finalizadas:")
+st.sidebar.markdown("### 🎨 Formas finalizadas:")
 st.sidebar.write(f"{len(st.session_state.formas)} desenho(s) salvos")
 
-# ----- Criar gráfico com visual de plano cartesiano -----
+# ----- Criar gráfico estilo plano cartesiano -----
 fig = go.Figure()
 
 # Eixos X e Y centrais
@@ -103,7 +105,7 @@ if st.session_state.forma_atual:
         marker=dict(size=6, color="#555")
     ))
 
-# ----- Layout do plano cartesiano -----
+# Layout estilo plano cartesiano
 fig.update_layout(
     width=700, height=700,
     template="simple_white",
