@@ -1,7 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
 import ezdxf
-import io
 import random
 
 st.set_page_config(page_title="Plano Cartesiano Interativo", layout="wide")
@@ -25,49 +24,60 @@ if st.sidebar.button("Adicionar ponto"):
 if st.sidebar.button("Finalizar forma"):
     if st.session_state.pontos:
         st.session_state.formas.append(st.session_state.pontos.copy())
-        st.session_state.cores.append(f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)})")
+        st.session_state.cores.append(f"rgb({random.randint(0,255)}, {random.randint(0,255)}, {random.randint(0,255)})")
         st.session_state.pontos = []
 
 # Upload DXF
 uploaded_file = st.sidebar.file_uploader("Upload DXF", type=["dxf"])
 if uploaded_file is not None:
     try:
-        # Lê DXF corretamente
         with open("temp_file.dxf", "wb") as f:
             f.write(uploaded_file.read())
         doc = ezdxf.readfile("temp_file.dxf")
         msp = doc.modelspace()
 
-        # Coleta todas as linhas e detecta limites
         linhas = []
         min_x = min_y = float("inf")
         max_x = max_y = float("-inf")
 
         for e in msp:
-            if e.dxftype() == "LINE":
+            tipo = e.dxftype()
+            if tipo == "LINE":
                 x1, y1, *_ = e.dxf.start
                 x2, y2, *_ = e.dxf.end
-                linhas.append(((x1, y1), (x2, y2)))
-                min_x = min(min_x, x1, x2)
-                max_x = max(max_x, x1, x2)
-                min_y = min(min_y, y1, y2)
-                max_y = max(max_y, y1, y2)
+                linhas.append([(x1, y1), (x2, y2)])
+                min_x, max_x = min(min_x, x1, x2), max(max_x, x1, x2)
+                min_y, max_y = min(min_y, y1, y2), max(max_y, y1, y2)
 
-        # Centraliza e escala para caber no plano (-10,10)
-        scale = max(max_x - min_x, max_y - min_y) / 18  # margem pequena
-        if scale == 0:
-            scale = 1
-        dx = (max_x + min_x) / 2
-        dy = (max_y + min_y) / 2
+            elif tipo in ["LWPOLYLINE", "POLYLINE"]:
+                pontos = []
+                for v in e:
+                    if hasattr(v, "dxf"):
+                        x, y = v.dxf.location.x, v.dxf.location.y
+                    else:
+                        x, y = v[0], v[1]
+                    pontos.append((x, y))
+                    min_x, max_x = min(min_x, x), max(max_x, x)
+                    min_y, max_y = min(min_y, y), max(max_y, y)
+                if len(pontos) > 1:
+                    linhas.append(pontos)
 
-        cor_dxf = f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)})"
-        for (p1, p2) in linhas:
-            x1, y1 = (p1[0]-dx)/scale, (p1[1]-dy)/scale
-            x2, y2 = (p2[0]-dx)/scale, (p2[1]-dy)/scale
-            st.session_state.formas.append([(x1, y1), (x2, y2)])
-            st.session_state.cores.append(cor_dxf)
+        if linhas:
+            scale = max(max_x - min_x, max_y - min_y) / 18
+            if scale == 0:
+                scale = 1
+            dx = (max_x + min_x) / 2
+            dy = (max_y + min_y) / 2
+            cor_dxf = f"rgb({random.randint(0,255)}, {random.randint(0,255)}, {random.randint(0,255)})"
 
-        st.sidebar.success("DXF carregado e centralizado no plano!")
+            for pts in linhas:
+                pts_scaled = [((px - dx) / scale, (py - dy) / scale) for px, py in pts]
+                st.session_state.formas.append(pts_scaled)
+                st.session_state.cores.append(cor_dxf)
+
+            st.sidebar.success(f"DXF carregado e {len(linhas)} entidades desenhadas!")
+        else:
+            st.sidebar.warning("Nenhuma linha ou polilinha encontrada no DXF.")
 
     except Exception as e:
         st.sidebar.error(f"Erro ao ler DXF: {e}")
