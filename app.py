@@ -5,12 +5,10 @@ import io
 import random
 
 st.set_page_config(page_title="Plano Cartesiano Interativo", layout="wide")
-
-# --- Barra lateral ---
 st.sidebar.title("Ferramentas")
 st.sidebar.markdown("Adicione coordenadas, finalize formas ou carregue um arquivo DXF.")
 
-# --- Variáveis de sessão ---
+# Sessão
 if "formas" not in st.session_state:
     st.session_state.formas = []
 if "pontos" not in st.session_state:
@@ -18,36 +16,29 @@ if "pontos" not in st.session_state:
 if "cores" not in st.session_state:
     st.session_state.cores = []
 
-# --- Entrada de coordenadas ---
-st.sidebar.subheader("Adicionar coordenada manual")
-x = st.sidebar.number_input("X", value=0.0, step=1.0)
-y = st.sidebar.number_input("Y", value=0.0, step=1.0)
-adicionar = st.sidebar.button("Adicionar ponto")
-finalizar = st.sidebar.button("Finalizar forma")
-
-# --- Upload de DXF ---
-st.sidebar.subheader("Upload de arquivo DXF")
-uploaded_file = st.sidebar.file_uploader("Escolha um arquivo DXF", type=["dxf"])
-
-# --- Adiciona ponto manual ---
-if adicionar:
+# Coordenadas manuais
+x = st.sidebar.number_input("X", step=1.0)
+y = st.sidebar.number_input("Y", step=1.0)
+if st.sidebar.button("Adicionar ponto"):
     st.session_state.pontos.append((x, y))
 
-# --- Finaliza a forma atual ---
-if finalizar and st.session_state.pontos:
-    st.session_state.formas.append(st.session_state.pontos.copy())
-    st.session_state.cores.append(f"rgb({random.randint(0,255)}, {random.randint(0,255)}, {random.randint(0,255)})")
-    st.session_state.pontos = []
+if st.sidebar.button("Finalizar forma"):
+    if st.session_state.pontos:
+        st.session_state.formas.append(st.session_state.pontos.copy())
+        st.session_state.cores.append(f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)})")
+        st.session_state.pontos = []
 
-# --- Lê o DXF (se enviado) ---
+# Upload DXF
+uploaded_file = st.sidebar.file_uploader("Upload DXF", type=["dxf"])
 if uploaded_file is not None:
     try:
-        # Lê os bytes e cria um stream
-        dxf_bytes = uploaded_file.read()
-        stream = io.BytesIO(dxf_bytes)
-        doc = ezdxf.read(stream)
+        # Criar um arquivo temporário para ezdxf.readfile
+        with open("temp_file.dxf", "wb") as f:
+            f.write(uploaded_file.read())
+        doc = ezdxf.readfile("temp_file.dxf")
         msp = doc.modelspace()
 
+        # Ler linhas do DXF
         pontos_dxf = []
         for e in msp:
             if e.dxftype() == "LINE":
@@ -56,47 +47,38 @@ if uploaded_file is not None:
                 pontos_dxf.append(((x1, y1), (x2, y2)))
 
         if pontos_dxf:
-            cor_dxf = f"rgb({random.randint(0,255)}, {random.randint(0,255)}, {random.randint(0,255)})"
+            cor_dxf = f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)})"
             for (p1, p2) in pontos_dxf:
                 st.session_state.formas.append([p1, p2])
                 st.session_state.cores.append(cor_dxf)
-        st.sidebar.success("Arquivo DXF carregado e desenhado com sucesso!")
+
+        st.sidebar.success("Arquivo DXF carregado com sucesso!")
 
     except Exception as e:
-        st.sidebar.error(f"Erro ao ler o arquivo DXF: {e}")
+        st.sidebar.error(f"Erro ao ler DXF: {e}")
 
-# --- Cria o gráfico ---
+# --- Criar gráfico ---
 fig = go.Figure()
 
-# Eixos e aparência de plano cartesiano
-fig.update_layout(
-    xaxis=dict(
-        title="Eixo X",
-        zeroline=True,
-        showgrid=True,
-        mirror=True,
-        showline=True,
-        zerolinewidth=2,
-        zerolinecolor="black"
-    ),
-    yaxis=dict(
-        title="Eixo Y",
-        zeroline=True,
-        showgrid=True,
-        mirror=True,
-        showline=True,
-        zerolinewidth=2,
-        zerolinecolor="black",
-        scaleanchor="x",
-        scaleratio=1
-    ),
-    plot_bgcolor="white",
-    width=900,
-    height=700,
-    margin=dict(l=20, r=20, t=20, b=20)
-)
+# Eixos estilo plano cartesiano
+fig.add_trace(go.Scatter(x=[-20, 20], y=[0,0], mode="lines", line=dict(color="black", width=2), showlegend=False))
+fig.add_trace(go.Scatter(x=[0,0], y=[-20, 20], mode="lines", line=dict(color="black", width=2), showlegend=False))
 
-# Desenha as formas finalizadas
+# Desenhar formas
 for forma, cor in zip(st.session_state.formas, st.session_state.cores):
     xs, ys = zip(*forma)
-    fig.add_trace_
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color=cor, width=2)))
+
+# Forma atual
+if st.session_state.pontos:
+    xs, ys = zip(*st.session_state.pontos)
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color="black", dash="dot")))
+
+fig.update_layout(
+    width=900, height=700,
+    xaxis=dict(title="Eixo X", zeroline=True, showgrid=True, mirror=True, showline=True),
+    yaxis=dict(title="Eixo Y", zeroline=True, showgrid=True, mirror=True, showline=True, scaleanchor="x", scaleratio=1),
+    plot_bgcolor="white"
+)
+
+st.plotly_chart(fig, use_container_width=True)
