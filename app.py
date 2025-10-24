@@ -1,138 +1,108 @@
 import streamlit as st
 import plotly.graph_objects as go
+import ezdxf
+import io
 import random
 
 st.set_page_config(page_title="Plano Cartesiano Interativo", layout="wide")
-st.title("📐 Plano Cartesiano Interativo")
 
-st.markdown("""
-Adicione pontos e desenhe segmentos de reta livremente no **plano cartesiano**.  
-Todos os controles estão na barra lateral 👉
-""")
+# --- Barra lateral ---
+st.sidebar.title("Ferramentas")
+st.sidebar.markdown("Adicione coordenadas, finalize formas ou carregue um arquivo DXF.")
 
-# ----- Estado inicial -----
+# --- Variáveis de sessão ---
 if "formas" not in st.session_state:
-    st.session_state.formas = []  # Lista de (pontos, cor)
-if "forma_atual" not in st.session_state:
-    st.session_state.forma_atual = []  # Pontos do desenho atual
-
-# ----- Funções auxiliares -----
-def cor_aleatoria():
-    cores = [
-        "#FF6B6B", "#6BCB77", "#4D96FF", "#FFD93D",
-        "#C77DFF", "#FF9F1C", "#00C9A7", "#845EC2",
-        "#F9F871", "#FF5C8D", "#3EC1D3", "#FF914D"
-    ]
-    return random.choice(cores)
-
-def gerar_steve():
-    return [
-        (-1, 8), (1, 8), (1, 10), (-1, 10), (-1, 8),
-        (-1.5, 8), (1.5, 8), (1.5, 4), (-1.5, 4), (-1.5, 8),
-        (-1.5, 7.8), (-2.5, 7.8), (-2.5, 4.2), (-1.5, 4.2), (-1.5, 7.8),
-        (1.5, 7.8), (2.5, 7.8), (2.5, 4.2), (1.5, 4.2), (1.5, 7.8),
-        (-1.0, 4), (-1.0, 0), (0, 0), (0, 4), (-1.0, 4),
-        (0, 4), (0, 0), (1.0, 0), (1.0, 4), (0, 4)
-    ]
-
-# ----- Interface lateral -----
-st.sidebar.header("🧭 Controles do Desenho")
-
-x = st.sidebar.number_input("Coordenada X", step=0.5)
-y = st.sidebar.number_input("Coordenada Y", step=0.5)
-
-col1, col2 = st.sidebar.columns(2)
-if col1.button("➕ Adicionar ponto"):
-    st.session_state.forma_atual.append((x, y))
-if col2.button("🗑️ Limpar tudo"):
     st.session_state.formas = []
-    st.session_state.forma_atual = []
+if "pontos" not in st.session_state:
+    st.session_state.pontos = []
+if "cores" not in st.session_state:
+    st.session_state.cores = []
 
-st.sidebar.markdown("---")
-if st.sidebar.button("✅ Finalizar forma"):
-    if st.session_state.forma_atual:
-        cor = cor_aleatoria()
-        st.session_state.formas.append({"pontos": st.session_state.forma_atual, "cor": cor})
-        st.session_state.forma_atual = []
+# --- Entrada de coordenadas ---
+st.sidebar.subheader("Adicionar coordenada manual")
+x = st.sidebar.number_input("X", value=0.0, step=1.0)
+y = st.sidebar.number_input("Y", value=0.0, step=1.0)
+adicionar = st.sidebar.button("Adicionar ponto")
+finalizar = st.sidebar.button("Finalizar forma")
 
-if st.sidebar.button("🧍‍♂️ Desenhar Steve do Minecraft"):
-    cor = cor_aleatoria()
-    st.session_state.formas.append({"pontos": gerar_steve(), "cor": cor})
+# --- Upload de DXF ---
+st.sidebar.subheader("Upload de arquivo DXF")
+uploaded_file = st.sidebar.file_uploader("Escolha um arquivo DXF", type=["dxf"])
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📋 Pontos atuais:")
-for i, (px, py) in enumerate(st.session_state.forma_atual, 1):
-    st.sidebar.write(f"{i}. ({px}, {py})")
+# --- Adiciona ponto manual ---
+if adicionar:
+    st.session_state.pontos.append((x, y))
 
-st.sidebar.markdown("### 🎨 Formas finalizadas:")
-st.sidebar.write(f"{len(st.session_state.formas)} desenho(s) salvos")
+# --- Finaliza a forma atual ---
+if finalizar and st.session_state.pontos:
+    st.session_state.formas.append(st.session_state.pontos.copy())
+    st.session_state.cores.append(f"rgb({random.randint(0,255)}, {random.randint(0,255)}, {random.randint(0,255)})")
+    st.session_state.pontos = []
 
-# ----- Criar gráfico estilo plano cartesiano -----
+# --- Lê o DXF (se enviado) ---
+if uploaded_file is not None:
+    try:
+        dxf_data = uploaded_file.read()
+        doc = ezdxf.read(stream=io.BytesIO(dxf_data))
+        msp = doc.modelspace()
+
+        pontos_dxf = []
+        for e in msp:
+            if e.dxftype() == "LINE":
+                x1, y1, _, _ = e.dxf.start
+                x2, y2, _, _ = e.dxf.end
+                pontos_dxf.append(((x1, y1), (x2, y2)))
+
+        if pontos_dxf:
+            cor_dxf = f"rgb({random.randint(0,255)}, {random.randint(0,255)}, {random.randint(0,255)})"
+            for (p1, p2) in pontos_dxf:
+                st.session_state.formas.append([p1, p2])
+                st.session_state.cores.append(cor_dxf)
+        st.sidebar.success("Arquivo DXF carregado e desenhado com sucesso!")
+
+    except Exception as e:
+        st.sidebar.error(f"Erro ao ler o arquivo DXF: {e}")
+
+# --- Cria o gráfico ---
 fig = go.Figure()
 
-# Eixos X e Y centrais
-fig.add_trace(go.Scatter(
-    x=[-20, 20], y=[0, 0],
-    mode="lines", line=dict(color="black", width=2),
-    showlegend=False
-))
-fig.add_trace(go.Scatter(
-    x=[0, 0], y=[-20, 20],
-    mode="lines", line=dict(color="black", width=2),
-    showlegend=False
-))
-
-# Formas finalizadas
-for i, forma in enumerate(st.session_state.formas, start=1):
-    xs, ys = zip(*forma["pontos"])
-    fig.add_trace(go.Scatter(
-        x=xs,
-        y=ys,
-        mode="lines+markers",
-        name=f"Forma {i}",
-        line=dict(width=3, color=forma["cor"]),
-        marker=dict(size=6, color=forma["cor"])
-    ))
-
-# Forma atual
-if st.session_state.forma_atual:
-    xs, ys = zip(*st.session_state.forma_atual)
-    fig.add_trace(go.Scatter(
-        x=xs, y=ys,
-        mode="lines+markers",
-        name="Forma atual",
-        line=dict(width=2, dash="dash", color="#888"),
-        marker=dict(size=6, color="#555")
-    ))
-
-# Layout estilo plano cartesiano
+# Eixos e aparência de plano cartesiano
 fig.update_layout(
-    width=700, height=700,
-    template="simple_white",
-    showlegend=True,
     xaxis=dict(
         title="Eixo X",
-        zeroline=False,
+        zeroline=True,
         showgrid=True,
-        gridcolor="#DDD",
-        range=[-10, 10],
-        ticks="outside",
-        tick0=0,
-        dtick=1
+        mirror=True,
+        showline=True,
+        zerolinewidth=2,
+        zerolinecolor="black"
     ),
     yaxis=dict(
         title="Eixo Y",
-        zeroline=False,
+        zeroline=True,
         showgrid=True,
-        gridcolor="#DDD",
-        range=[-10, 10],
-        ticks="outside",
-        tick0=0,
-        dtick=1
+        mirror=True,
+        showline=True,
+        zerolinewidth=2,
+        zerolinecolor="black",
+        scaleanchor="x",
+        scaleratio=1
     ),
     plot_bgcolor="white",
+    width=900,
+    height=700,
+    margin=dict(l=20, r=20, t=20, b=20)
 )
 
-# Travar proporção e permitir zoom livre
-fig.update_xaxes(scaleanchor="y", scaleratio=1)
+# Desenha as formas finalizadas
+for forma, cor in zip(st.session_state.formas, st.session_state.cores):
+    xs, ys = zip(*forma)
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color=cor, width=2), name="Forma"))
+
+# Desenha a forma atual (ainda sendo feita)
+if st.session_state.pontos:
+    xs, ys = zip(*st.session_state.pontos)
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color="black", dash="dot"), name="Atual"))
+
+# --- Mostra o gráfico ---
 st.plotly_chart(fig, use_container_width=True)
