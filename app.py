@@ -80,4 +80,20 @@ fig.add_trace(go.Scatter(x=[-20, 20], y=[0,0], mode="lines", line=dict(color="bl
 fig.add_trace(go.Scatter(x=[0,0], y=[-20, 20], mode="lines", line=dict(color="black", width=2), showlegend=False))
 
 # Desenhar formas
-for
+for forma, cor in zip(st.session_state.formas, st.session_state.cores):
+    xs, ys = zip(*forma)
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color=cor, width=2)))
+
+# Forma atual
+if st.session_state.pontos:
+    xs, ys = zip(*st.session_state.pontos)
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color="black", dash="dot")))
+
+fig.update_layout(
+    width=900, height=700,
+    xaxis=dict(title="Eixo X", zeroline=True, showgrid=True, mirror=True, showline=True),
+    yaxis=dict(title="Eixo Y", zeroline=True, showgrid=True, mirror=True, showline=True, scaleanchor="x", scaleratio=1),
+    plot_bgcolor="white"
+)
+
+st.plotly_chart(fig, use_container_width=True)
