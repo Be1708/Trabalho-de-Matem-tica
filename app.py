@@ -42,15 +42,17 @@ if finalizar and st.session_state.pontos:
 # --- Lê o DXF (se enviado) ---
 if uploaded_file is not None:
     try:
-        dxf_data = uploaded_file.read()
-        doc = ezdxf.read(stream=io.BytesIO(dxf_data))
+        # Lê os bytes e cria um stream
+        dxf_bytes = uploaded_file.read()
+        stream = io.BytesIO(dxf_bytes)
+        doc = ezdxf.read(stream)
         msp = doc.modelspace()
 
         pontos_dxf = []
         for e in msp:
             if e.dxftype() == "LINE":
-                x1, y1, _, _ = e.dxf.start
-                x2, y2, _, _ = e.dxf.end
+                x1, y1, *_ = e.dxf.start
+                x2, y2, *_ = e.dxf.end
                 pontos_dxf.append(((x1, y1), (x2, y2)))
 
         if pontos_dxf:
@@ -97,12 +99,4 @@ fig.update_layout(
 # Desenha as formas finalizadas
 for forma, cor in zip(st.session_state.formas, st.session_state.cores):
     xs, ys = zip(*forma)
-    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color=cor, width=2), name="Forma"))
-
-# Desenha a forma atual (ainda sendo feita)
-if st.session_state.pontos:
-    xs, ys = zip(*st.session_state.pontos)
-    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", line=dict(color="black", dash="dot"), name="Atual"))
-
-# --- Mostra o gráfico ---
-st.plotly_chart(fig, use_container_width=True)
+    fig.add_trace_
