@@ -3,7 +3,6 @@ import plotly.graph_objects as go
 import ezdxf
 import random
 import numpy as np
-import time
 
 st.set_page_config(page_title="Plano Cartesiano Interativo", layout="wide")
 st.sidebar.title("Ferramentas")
@@ -108,10 +107,16 @@ fig.update_layout(
     plot_bgcolor="white"
 )
 
-grafico = st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True)
 
-# --- Lista de coordenadas abaixo ---
+# --- Botão Limpar Tudo ---
 st.sidebar.markdown("---")
+if st.sidebar.button("Limpar Tudo"):
+    st.session_state.formas = []
+    st.session_state.pontos = []
+    st.session_state.cores = []
+
+# --- Lista de coordenadas ---
 st.sidebar.subheader("Coordenadas das formas")
 if not st.session_state.formas:
     st.sidebar.write("Nenhuma forma desenhada ainda.")
