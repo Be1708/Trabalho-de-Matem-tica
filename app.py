@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import ezdxf
 import random
+import numpy as np
 import time
 
 st.set_page_config(page_title="Plano Cartesiano Interativo", layout="wide")
@@ -109,17 +110,36 @@ fig.update_layout(
 
 grafico = st.plotly_chart(fig, use_container_width=True)
 
+# --- Lista de coordenadas ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("Coordenadas das formas")
+if not st.session_state.formas:
+    st.sidebar.write("Nenhuma forma desenhada ainda.")
+else:
+    for i, forma in enumerate(st.session_state.formas, start=1):
+        st.sidebar.markdown(f"**Forma {i}:** cor `{st.session_state.cores[i-1]}`")
+        for (px, py) in forma:
+            st.sidebar.write(f"({px:.2f}, {py:.2f})")
+        st.sidebar.markdown("---")
+
 # --- Botão Cortar ---
-if st.sidebar.button("Cortar"):
+def cortar():
     if not st.session_state.formas:
         st.sidebar.warning("Não há formas para cortar.")
-    else:
-        # Percorre cada linha
-        for forma in st.session_state.formas:
-            for x, y in forma:
-                # Desenha a forma original
+        return
+    for forma in st.session_state.formas:
+        # percorre cada segmento da linha
+        for i in range(len(forma)-1):
+            x0, y0 = forma[i]
+            x1, y1 = forma[i+1]
+            # cria interpolação de 20 pontos por segmento
+            xs = np.linspace(x0, x1, 20)
+            ys = np.linspace(y0, y1, 20)
+            for px, py in zip(xs, ys):
                 fig2 = fig
-                # Adiciona ponto vermelho simulando cortadora
-                fig2.add_trace(go.Scatter(x=[x], y=[y], mode="markers", marker=dict(color="red", size=12), name="Cortando"))
+                fig2.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(color="red", size=10), name="Cortando"))
                 grafico.plotly_chart(fig2, use_container_width=True)
-                time.sleep(0.05)  # Ajusta velocidade do "corte"
+                time.sleep(0.05)
+
+if st.sidebar.button("Cortar"):
+    cortar()
