@@ -110,29 +110,6 @@ fig.update_layout(
 
 grafico = st.plotly_chart(fig, use_container_width=True)
 
-# --- Botão Cortar acima da lista de coordenadas ---
-st.sidebar.markdown("---")
-st.sidebar.subheader("Cortar linhas")
-
-def cortar():
-    if not st.session_state.formas:
-        st.sidebar.warning("Não há formas para cortar.")
-        return
-    for forma in st.session_state.formas:
-        for i in range(len(forma)-1):
-            x0, y0 = forma[i]
-            x1, y1 = forma[i+1]
-            xs = np.linspace(x0, x1, 20)
-            ys = np.linspace(y0, y1, 20)
-            for px, py in zip(xs, ys):
-                fig2 = fig
-                fig2.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(color="red", size=10), name="Cortando"))
-                grafico.plotly_chart(fig2, use_container_width=True)
-                time.sleep(0.05)
-
-if st.sidebar.button("Cortar"):
-    cortar()
-
 # --- Lista de coordenadas abaixo ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("Coordenadas das formas")
